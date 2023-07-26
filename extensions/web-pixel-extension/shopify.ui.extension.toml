@@ -13,3 +13,11 @@ type = "single_line_text_field"
 validations =  [
   { name = "min", value = "1" }
 ]
+
+# [settings.fields.rawDomain]
+# name = "Raw Domain"
+# description = "Shopify Raw Domain"
+# type = "single_line_text_field"
+# validations =  [
+#   { name = "regex", value = "[^.\s]+\.myshopify\.com" }
+# ]
