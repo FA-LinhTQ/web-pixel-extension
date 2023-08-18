@@ -1,21 +1,18 @@
-import { 
-	PAYMENT_INFO_SUBMITTED,
-    CONVERSION_API_PATH,
- } from './variables'
+import {PAYMENT_INFO_SUBMITTED, CONVERSION_API_PATH, NGROK_API} from './variables'
 
-let eventName = ''
 let eventData = {}
 let rawDomain = ''
 let wokerBrowser = {}
-let sourceUrl = ''
-let quantity = 0
-let contents = []
+let listVariantItems = []
+let listProductItems = []
 let totalItemsValue = 0
 let currency = ''
 
 let paymentSubmited = (eventId) => {
     let payload = {
-        contents,
+        contents: listVariantItems,
+        variant_id: listVariantItems,
+        product_id: listProductItems,
         currency,
         value: totalItemsValue,
     }
@@ -24,9 +21,12 @@ let paymentSubmited = (eventId) => {
 
 let updateData = (checkoutData) => {
     checkoutData.lineItems.forEach(item => {
-        quantity = quantity + item.quantity
-        contents.push({
+        listVariantItems.push({
             id: item.variant.id,
+            quantity: item.quantity,
+        })
+        listProductItems.push({
+            id: item.variant.product.id,
             quantity: item.quantity,
         })
     })
@@ -37,28 +37,34 @@ let updateData = (checkoutData) => {
 let sendBeacon = (eventName, eventId, eventPayload) => {
     let payload = {
         shop: rawDomain,
-        event_name: eventName,
-        event_time: new Date().getTime(),
+        event: eventName,
+        timestamp: new Date().toISOString(),
         event_id: eventId,
-        action_source: 'website',
-        custom_data: eventPayload,
-        event_source_url: sourceUrl,
-        social_type: 'tiktok'
+        properties: eventPayload,
+        event_source_url: eventData.context.document.location.href,
+        social_type: 'tiktok',
+        context: {
+            page: {
+                url: eventData.context.document.location.href,
+                referrer: eventData.context.document.location.origin
+            }
+        }
     }
-    wokerBrowser.sendBeacon('https://ef50-42-96-52-2.ngrok-free.app' + CONVERSION_API_PATH, JSON.stringify(payload))
+    wokerBrowser.sendBeacon(NGROK_API + CONVERSION_API_PATH, JSON.stringify(payload))
 }
 
 export default function (browser, event, domain) {
-    eventName = event.name
-    eventData = event
-    rawDomain = domain
-    wokerBrowser = browser
-    sourceUrl = event.context.document.location.href
-    updateData(event.data.checkout);
-
-    switch (eventName) {
-        case PAYMENT_INFO_SUBMITTED:
-            paymentSubmited(event.id)
-            break;
+    try {
+        eventData = event
+        rawDomain = domain
+        wokerBrowser = browser
+        updateData(event.data.checkout);
+        switch (event.name) {
+            case PAYMENT_INFO_SUBMITTED:
+                paymentSubmited(event.id)
+                break;
+        }
+    } catch(error) {
+        console.log(error)
     }
 }

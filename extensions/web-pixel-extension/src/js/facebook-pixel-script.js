@@ -1,22 +1,19 @@
-import { 
-	PAYMENT_INFO_SUBMITTED,
-    CONVERSION_API_PATH,
- } from './variables'
+import {PAYMENT_INFO_SUBMITTED, CONVERSION_API_PATH, NGROK_API} from './variables'
 
-let eventName = ''
 let eventData = {}
 let rawDomain = ''
 let wokerBrowser = {}
-let sourceUrl = ''
-let contentIds = []
-let quantity = 0
+let variantIds = []
+let productIds = []
 let contents = []
 let totalItemsValue = 0
 let currency = ''
 
 let paymentSubmited = (eventId) => {
     let payload = {
-        content_ids: contentIds,
+        content_ids: variantIds,
+        variant_id: variantIds,
+        product_id: productIds,
         contents,
         currency,
         value: totalItemsValue,
@@ -26,8 +23,8 @@ let paymentSubmited = (eventId) => {
 
 let updateData = (checkoutData) => {
     checkoutData.lineItems.forEach(item => {
-        contentIds.push(item.variant.id)
-        quantity = quantity + item.quantity
+        variantIds.push(item.variant.id)
+        productIds.push(item.variant.product.id)
         contents.push({
             id: item.variant.id,
             quantity: item.quantity,
@@ -45,23 +42,24 @@ let sendBeacon = (eventName, eventId, eventPayload) => {
         event_id: eventId,
         action_source: 'website',
         custom_data: eventPayload,
-        event_source_url: sourceUrl,
+        event_source_url: eventData.context.document.location.href,
         social_type: 'facebook'
     }
-    wokerBrowser.sendBeacon('https://ef50-42-96-52-2.ngrok-free.app' + CONVERSION_API_PATH, JSON.stringify(payload))
+    wokerBrowser.sendBeacon(NGROK_API + CONVERSION_API_PATH, JSON.stringify(payload))
 }
 
 export default function (browser, event, domain) {
-    eventName = event.name
-    eventData = event
-    rawDomain = domain
-    wokerBrowser = browser
-    sourceUrl = event.context.document.location.href
-    updateData(event.data.checkout);
-
-    switch (eventName) {
-        case PAYMENT_INFO_SUBMITTED:
-            paymentSubmited(event.id)
-            break;
+    try {
+        eventData = event
+        rawDomain = domain
+        wokerBrowser = browser
+        updateData(event.data.checkout);
+        switch (event.name) {
+            case PAYMENT_INFO_SUBMITTED:
+                paymentSubmited(event.id)
+                break;
+        }
+    } catch(error) {
+        console.log(error)
     }
 }
